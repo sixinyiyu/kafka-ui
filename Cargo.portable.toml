@@ -1,0 +1,63 @@
+[package]
+name = "kafka-ui"
+version = "0.1.0"
+edition = "2021"
+description = "Kafka UI — 基于 GPUI 的桌面版 Kafka 管理工具"
+license = "MIT"
+# 元数据：用于 Windows 安装包（cargo-wix / NSIS / 版本号）
+authors = ["kafka-ui"]
+repository = "https://example.com/kafka-ui"
+readme = "README.md"
+
+[[bin]]
+name = "kafka-ui"
+path = "src/main.rs"
+
+[dependencies]
+# 异步运行时：GPUI 主线程外由后台线程驱动 tokio，Kafka 客户端全异步
+tokio = { version = "1", features = [
+    "macros",
+    "rt-multi-thread",
+    "sync",
+    "time",
+    "fs",
+] }
+
+# 纯 Rust Kafka 客户端（与 kafka-proxy 使用同一套 API）
+kafka_client = "0.8"
+bytes = "1"
+
+# 序列化 / 配置持久化
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+
+# 日志
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-appender = "0.2"
+
+# 通用工具
+anyhow = "1"
+thiserror = "2"
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1", features = ["v4"] }
+dirs = "5"
+futures = "0.3"
+unicode-segmentation = "1"
+
+# 桌面 GUI（GPUI）：使用上游 git 依赖，Windows / Linux 均可直接构建。
+# 说明：离线/内网 Linux 机器请改用本地化版本：把 `Cargo.offline.toml` 覆盖到本文件
+#        （或运行 `scripts/use-offline(Cargo).sh`），见 README。
+gpui = { git = "https://github.com/zed-industries/zed", tag = "v0.195.5" }
+
+[profile.release]
+opt-level = 2
+lto = "thin"
+strip = true
+
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 2

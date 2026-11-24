@@ -1,0 +1,179 @@
+# =============================================================================
+#  Kafka UI — Windows CI：格式检查 / Clippy / 测试 / 构建 / 打包安装包 / 发布
+# -----------------------------------------------------------------------------
+#  触发方式：
+#    - 推送到 main（改动 src/Cargo/打包脚本时）
+#    - PR 到 main
+#    - 手动（Actions 页面 → Run workflow，可填 version）
+#    - 打 tag v* 时
+#
+#  说明：GPUI 依赖 Windows + MSVC 与本机图形栈，无法从 Linux 交叉编译，
+#        因此在 windows-latest 上原生执行 fmt/clippy/test/build。
+#        Windows 构建使用「可移植清单」Cargo.portable.toml（上游 git 依赖）。
+# =============================================================================
+name: Windows CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'Cargo.toml'
+      - 'Cargo.portable.toml'
+      - 'Cargo.lock'
+      - 'rust-toolchain.toml'
+      - 'scripts/**'
+      - 'packaging/**'
+      - '.github/workflows/windows-build.yml'
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'Cargo.toml'
+      - 'Cargo.portable.toml'
+      - 'Cargo.lock'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '要构建/发布的版本号（留空则读取 Cargo.toml）'
+        required: false
+        default: ''
+      release:
+        description: '是否创建 GitHub Release 并上传安装包'
+        type: boolean
+        required: false
+        default: false
+
+# 允许创建 Release / 上传附件
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  # ── 0. 读取版本号 ────────────────────────────────────────────────
+  prepare:
+    name: Prepare
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read version
+        id: version
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
+            echo "✅ Version from input: $VERSION"
+          else
+            VERSION=$(grep -m1 '^version' Cargo.toml | sed -E 's/.*"(.*)".*/\1/')
+            echo "✅ Version from Cargo.toml: $VERSION"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+  # ── 1. 格式 / Clippy / 测试 ──────────────────────────────────────
+  check:
+    name: fmt · clippy · test
+    needs: prepare
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust (MSVC + rustfmt + clippy)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Use portable manifest (upstream git deps)
+        shell: pwsh
+        run: Copy-Item Cargo.portable.toml Cargo.toml -Force
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: windows-check
+
+      - name: cargo fmt --check
+        run: cargo fmt --all -- --check
+
+      - name: cargo clippy (deny warnings, own crate only)
+        run: cargo clippy --all-targets --no-deps -- -D warnings
+
+      - name: cargo test
+        run: cargo test --lib
+
+  # ── 2. Release 构建 + 打包（exe / zip / NSIS setup）────────────────
+  build:
+    name: build · package
+    needs: [prepare, check]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust (MSVC)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Use portable manifest (upstream git deps)
+        shell: pwsh
+        run: Copy-Item Cargo.portable.toml Cargo.toml -Force
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: windows-build
+
+      - name: Install NSIS
+        run: choco install nsis -y --no-progress
+
+      - name: Build & package (scripts/build-windows.ps1)
+        shell: pwsh
+        run: ./scripts/build-windows.ps1 -Target x86_64-pc-windows-msvc
+
+      - name: Show dist
+        shell: pwsh
+        run: Get-ChildItem dist | Format-Table Name, Length
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: kafka-ui-windows-${{ needs.prepare.outputs.version }}
+          path: |
+            dist/*.exe
+            dist/*.zip
+          if-no-files-found: error
+
+  # ── 3. 发布（仅手动触发勾选 release 或打 tag 时）──────────────────
+  release:
+    name: GitHub Release
+    needs: [prepare, build]
+    if: |
+      (github.event_name == 'workflow_dispatch' && inputs.release) ||
+      startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+          pattern: kafka-ui-windows-*
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          # 手动触发时用输入版本号建 tag；tag 触发时用触发 tag 名
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('v{0}', needs.prepare.outputs.version) }}
+          name: Kafka UI v${{ needs.prepare.outputs.version }}
+          files: release-artifacts/**/*.{exe,zip}
+          generate_release_notes: true
+          draft: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
