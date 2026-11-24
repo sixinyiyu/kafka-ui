@@ -55,7 +55,10 @@ impl SecurityProtocolKind {
     }
 
     pub fn needs_tls(&self) -> bool {
-        matches!(self, SecurityProtocolKind::Ssl | SecurityProtocolKind::SaslSsl)
+        matches!(
+            self,
+            SecurityProtocolKind::Ssl | SecurityProtocolKind::SaslSsl
+        )
     }
 }
 
@@ -301,18 +304,16 @@ pub async fn build_client(cfg: &ClusterConfig) -> Result<Client> {
                 let mech = other
                     .to_client_mech()
                     .ok_or_else(|| anyhow!("不支持的 SASL 机制: {}", other.as_str()))?;
-                builder = builder
-                    .with_sasl_credentials(mech, cfg.username.clone(), cfg.password.clone());
+                builder =
+                    builder.with_sasl_credentials(mech, cfg.username.clone(), cfg.password.clone());
             }
         }
     }
 
-    builder.build().await.with_context(|| {
-        format!(
-            "连接 Kafka 失败（{}）",
-            cfg.bootstrap_servers
-        )
-    })
+    builder
+        .build()
+        .await
+        .with_context(|| format!("连接 Kafka 失败（{}）", cfg.bootstrap_servers))
 }
 
 /// 测试连接：连接成功后拉取集群拓扑。

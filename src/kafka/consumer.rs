@@ -109,7 +109,10 @@ pub async fn topic_consumers(
         .await
         .context("拉取消费组成员失败")?;
     let desc_by_id: std::collections::HashMap<&str, &kafka_client::admin::AdminGroupDescription> =
-        descriptions.iter().map(|d| (d.group_id.as_str(), d)).collect();
+        descriptions
+            .iter()
+            .map(|d| (d.group_id.as_str(), d))
+            .collect();
 
     // 并发拉取各组的已提交位点（5s 超时保护），与 kafka-proxy 保持一致
     let fetches = consumer_groups.iter().map(|gid| async move {
@@ -125,12 +128,9 @@ pub async fn topic_consumers(
             }
         }
     });
-    let results = tokio::time::timeout(
-        Duration::from_secs(15),
-        futures::future::join_all(fetches),
-    )
-    .await
-    .unwrap_or_default();
+    let results = tokio::time::timeout(Duration::from_secs(15), futures::future::join_all(fetches))
+        .await
+        .unwrap_or_default();
 
     let mut views: Vec<GroupView> = Vec::new();
     for item in results.into_iter().flatten() {

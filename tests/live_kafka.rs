@@ -27,7 +27,10 @@ fn cfg() -> ClusterConfig {
 #[tokio::test]
 #[ignore]
 async fn end_to_end_against_live_kafka() {
-    let _ = tracing_subscriber::fmt().with_max_level(tracing::Level::DEBUG).with_test_writer().try_init();
+    let _ = tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::DEBUG)
+        .with_test_writer()
+        .try_init();
     let cfg = cfg();
 
     // 1. 连接测试
@@ -71,7 +74,9 @@ async fn end_to_end_against_live_kafka() {
         let out = producer::send_message(&client, &s).await.expect("send");
         println!("[发送] partition={} offset={}", out.partition, out.offset);
         // 每个分区发送后立即查看 LEO，便于定位丢失
-        let e = topics::log_end_offsets(&client, &topic_name).await.unwrap_or_default();
+        let e = topics::log_end_offsets(&client, &topic_name)
+            .await
+            .unwrap_or_default();
         println!("    立即 LEO={:?}", e);
         assert_eq!(out.topic, topic_name);
     }

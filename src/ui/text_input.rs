@@ -7,9 +7,9 @@
 use std::ops::Range;
 use std::rc::Rc;
 
-use gpui::prelude::*;
 #[allow(unused_imports)]
 use gpui::actions;
+use gpui::prelude::*;
 use gpui::{
     div, point, px, size, App, Bounds, ClipboardItem, Context, CursorStyle, Element, ElementId,
     ElementInputHandler, Entity, EntityInputHandler, FocusHandle, Focusable, GlobalElementId,
@@ -575,9 +575,10 @@ impl Element for TextElement {
         };
 
         let font_size = style.font_size.to_pixels(window.rem_size());
-        let line = window
-            .text_system()
-            .shape_line(display_text.clone().into(), font_size, &runs, None);
+        let line =
+            window
+                .text_system()
+                .shape_line(display_text.clone().into(), font_size, &runs, None);
 
         let cursor_pos = line.x_for_index(cursor);
         let (selection, cursor) = if selected_range.is_empty() {

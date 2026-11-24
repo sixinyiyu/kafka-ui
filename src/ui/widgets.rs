@@ -36,11 +36,7 @@ pub fn button(
         ButtonKind::Primary => (th::accent(), th::accent_text(), th::accent()),
         ButtonKind::Secondary => (th::bg_panel(), th::text(), th::border()),
         ButtonKind::Danger => (th::bg_panel(), th::error(), th::error_border()),
-        ButtonKind::Ghost => (
-            transparent(),
-            th::text_muted(),
-            transparent(),
-        ),
+        ButtonKind::Ghost => (transparent(), th::text_muted(), transparent()),
     };
     let hover_bg = match kind {
         ButtonKind::Primary => th::accent_hover(),
@@ -90,11 +86,7 @@ pub fn button_sm(
     let (bg, fg, border) = match kind {
         ButtonKind::Primary => (th::accent(), th::accent_text(), th::accent()),
         ButtonKind::Danger => (th::bg_panel(), th::error(), th::error_border()),
-        ButtonKind::Ghost => (
-            transparent(),
-            th::text_muted(),
-            transparent(),
-        ),
+        ButtonKind::Ghost => (transparent(), th::text_muted(), transparent()),
         ButtonKind::Secondary => (th::bg_panel(), th::text(), th::border()),
     };
     let mut el = div()
