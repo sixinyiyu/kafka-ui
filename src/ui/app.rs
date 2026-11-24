@@ -13,7 +13,7 @@ use gpui::{
 };
 
 use crate::kafka::client::{
-    build_client, test_connection, BrokerInfo, ClusterConfig, ConnectionTest, SaslMechanismKind,
+    get_client, test_connection, BrokerInfo, ClusterConfig, ConnectionTest, SaslMechanismKind,
     SecurityProtocolKind,
 };
 use crate::kafka::topics::TopicSummary;
@@ -435,7 +435,7 @@ impl KafkaUi {
         self.run::<(Vec<BrokerInfo>, Option<String>), _, _>(
             cx,
             async move {
-                let client = build_client(&cfg).await.map_err(err_text)?;
+                let client = get_client(&cfg).await.map_err(err_text)?;
                 let brokers = topics::list_brokers(&client.admin())
                     .await
                     .map_err(err_text)?;
@@ -443,7 +443,6 @@ impl KafkaUi {
                     .iter()
                     .find(|b| b.is_controller)
                     .map(|b| format!("{}", b.id));
-                let _ = client.close().await;
                 Ok((brokers, controller))
             },
             |this, cx, res| {
@@ -473,11 +472,10 @@ impl KafkaUi {
         self.run::<topics::TopicDetail, _, _>(
             cx,
             async move {
-                let client = build_client(&cfg).await.map_err(err_text)?;
-                let d = topics::describe_topic(&client, &topic)
+                let client = get_client(&cfg).await.map_err(err_text)?;
+                let d = topics::describe_topic(client.as_ref(), &topic)
                     .await
                     .map_err(err_text)?;
-                let _ = client.close().await;
                 Ok(d)
             },
             |this, cx, res| {
@@ -513,11 +511,10 @@ impl KafkaUi {
         self.run::<Vec<TopicSummary>, _, _>(
             cx,
             async move {
-                let client = build_client(&cfg).await.map_err(err_text)?;
+                let client = get_client(&cfg).await.map_err(err_text)?;
                 let list = topics::list_topics(&client.admin())
                     .await
                     .map_err(err_text)?;
-                let _ = client.close().await;
                 Ok(list)
             },
             |this, cx, res| {
@@ -557,11 +554,10 @@ impl KafkaUi {
         self.run::<(bool, String), _, _>(
             cx,
             async move {
-                let client = build_client(&cfg).await.map_err(err_text)?;
+                let client = get_client(&cfg).await.map_err(err_text)?;
                 let r = topics::create_topic(&client.admin(), &spec)
                     .await
                     .map_err(err_text)?;
-                let _ = client.close().await;
                 Ok(r)
             },
             |this, cx, res| match res {
@@ -595,11 +591,10 @@ impl KafkaUi {
         self.run::<String, _, _>(
             cx,
             async move {
-                let client = build_client(&cfg).await.map_err(err_text)?;
+                let client = get_client(&cfg).await.map_err(err_text)?;
                 let msg = topics::delete_topic(&client.admin(), &n)
                     .await
                     .map_err(err_text)?;
-                let _ = client.close().await;
                 Ok(msg)
             },
             move |this, cx, res| match res {
@@ -640,11 +635,11 @@ impl KafkaUi {
         self.run::<messages::FetchResult, _, _>(
             cx,
             async move {
-                let client = build_client(&cfg).await.map_err(err_text)?;
-                let r = messages::fetch_latest(&client, &topic, count, Duration::from_secs(8))
-                    .await
-                    .map_err(err_text)?;
-                let _ = client.close().await;
+                let client = get_client(&cfg).await.map_err(err_text)?;
+                let r =
+                    messages::fetch_latest(client.as_ref(), &topic, count, Duration::from_secs(8))
+                        .await
+                        .map_err(err_text)?;
                 Ok(r)
             },
             |this, cx, res| {
@@ -690,11 +685,10 @@ impl KafkaUi {
         self.run::<producer::SendOutcome, _, _>(
             cx,
             async move {
-                let client = build_client(&cfg).await.map_err(err_text)?;
-                let out = producer::send_message(&client, &spec)
+                let client = get_client(&cfg).await.map_err(err_text)?;
+                let out = producer::send_message(client.as_ref(), &spec)
                     .await
                     .map_err(err_text)?;
-                let _ = client.close().await;
                 Ok(out)
             },
             |this, cx, res| match res {
@@ -726,11 +720,10 @@ impl KafkaUi {
         self.run::<Vec<consumer::GroupView>, _, _>(
             cx,
             async move {
-                let client = build_client(&cfg).await.map_err(err_text)?;
+                let client = get_client(&cfg).await.map_err(err_text)?;
                 let g = consumer::topic_consumers(&client.admin(), topic.as_deref())
                     .await
                     .map_err(err_text)?;
-                let _ = client.close().await;
                 Ok(g)
             },
             |this, cx, res| {
@@ -1794,7 +1787,17 @@ impl KafkaUi {
             }
         }
 
-        let list_card = w::card(div().flex().flex_col().child(toolbar).child(rows));
+        let list_card = w::card(
+            div().flex().flex_col().child(toolbar).child(
+                div()
+                    .id("topic-list")
+                    .flex()
+                    .flex_col()
+                    .min_h_0()
+                    .overflow_y_scroll()
+                    .child(rows),
+            ),
+        );
 
         // 创建 topic 工具条
         let e_create = entity.clone();
@@ -2231,7 +2234,12 @@ impl KafkaUi {
             ));
         } else {
             let list = self.msgs.messages.clone();
-            let mut scroll = div().flex().flex_col().max_h(px(420.0)).overflow_hidden();
+            let mut scroll = div()
+                .id("msg-list")
+                .flex()
+                .flex_col()
+                .max_h(px(460.0))
+                .overflow_y_scroll();
             for (idx, m) in list.iter().enumerate() {
                 let e_sel = entity.clone();
                 let sel = self.selected_msg == Some(idx);

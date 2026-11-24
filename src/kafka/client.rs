@@ -336,6 +336,53 @@ fn broker_resolve_hint(err: &str) -> &'static str {
     }
 }
 
+/// 按配置缓存 `Client`，避免每次操作都重新建连 + 拉元数据（建连很慢）。
+///
+/// key 用影响连接身份的关键字段（名称/id 之外的变化会视为不同连接）。
+static CLIENT_CACHE: std::sync::OnceLock<
+    tokio::sync::Mutex<std::collections::HashMap<String, std::sync::Arc<Client>>>,
+> = std::sync::OnceLock::new();
+
+fn cache_key(cfg: &ClusterConfig) -> String {
+    format!(
+        "{}|{}|{:?}|{:?}|{}|{}|{}|{}|{}",
+        cfg.id,
+        cfg.bootstrap_servers,
+        cfg.security_protocol,
+        cfg.sasl_mechanism,
+        cfg.username,
+        cfg.tls_domain,
+        cfg.kerberos_principal,
+        cfg.kerberos_keytab,
+        cfg.kdc_host,
+    )
+}
+
+/// 获取（或首次构建并缓存）指定集群的客户端。
+pub async fn get_client(cfg: &ClusterConfig) -> Result<std::sync::Arc<Client>> {
+    let key = cache_key(cfg);
+    let cache =
+        CLIENT_CACHE.get_or_init(|| tokio::sync::Mutex::new(std::collections::HashMap::new()));
+    {
+        let guard = cache.lock().await;
+        if let Some(c) = guard.get(&key) {
+            return Ok(c.clone());
+        }
+    }
+    // 未命中：在锁外建连（避免阻塞其它连接的读写）。
+    let client = std::sync::Arc::new(build_client(cfg).await?);
+    let mut guard = cache.lock().await;
+    guard.insert(key, client.clone());
+    Ok(client)
+}
+
+/// 清除指定集群（或全部）的客户端缓存，例如修改配置后。
+pub async fn invalidate_client(cfg: &ClusterConfig) {
+    if let Some(cache) = CLIENT_CACHE.get() {
+        cache.lock().await.remove(&cache_key(cfg));
+    }
+}
+
 /// 测试连接：连接成功后拉取集群拓扑。
 pub async fn test_connection(cfg: &ClusterConfig) -> ConnectionTest {
     let start = std::time::Instant::now();
