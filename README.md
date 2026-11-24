@@ -55,8 +55,18 @@ src/
 cargo run --release
 ```
 
-连接配置文件默认位于 `$XDG_CONFIG_HOME/kafka-ui/clusters.yaml`
-（可用环境变量 `KAFKA_UI_CONFIG` 指定路径）。首次启动后在「集群连接」页新增集群即可。
+连接信息以 **YAML 明文**保存到用户配置目录，路径由 `src/store.rs::Store::config_path()` 决定，
+优先级：环境变量 `KAFKA_UI_CONFIG` → `dirs::config_dir()/kafka-ui/clusters.yaml` → `./clusters.yaml`。
+
+| 平台 | 默认路径 |
+| --- | --- |
+| Windows | `%APPDATA%\kafka-ui\clusters.yaml`（`C:\Users\<你>\AppData\Roaming\kafka-ui\clusters.yaml`） |
+| Linux | `${XDG_CONFIG_HOME:-~/.config}/kafka-ui/clusters.yaml` |
+| macOS | `~/Library/Application Support/kafka-ui/clusters.yaml` |
+
+> 文件内含 bootstrap、安全协议、SASL 用户名 / **密码（明文）**、Kerberos、备注等；
+> 该文件已在 `.gitignore` 中忽略，不会提交到仓库。首次启动后在「集群连接」页新增集群即可，
+> 界面侧栏底部与启动日志会显示实际路径。如需用自定义位置，设置 `KAFKA_UI_CONFIG=/path/to/clusters.yaml`。
 
 日志级别可用 `RUST_LOG` 控制：
 
