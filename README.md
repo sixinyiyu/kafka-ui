@@ -74,6 +74,21 @@ cargo run --release
 RUST_LOG=kafka_ui=debug cargo run
 ```
 
+### 连接报 “Invalid broker address” 怎么办
+
+Kafka 的 bootstrap 能连通，但集群 metadata 里 broker 使用的是**内网域名**（例如
+`dayu720di.zsy.bjat.qianxin-inc.cn`）。如果当前机器（尤其 **Windows**）解析不到该域名，
+就会报 `Invalid broker address: <host>`。解决办法：在 hosts 里加一条映射即可。
+
+- **Windows**：`C:\Windows\System32\drivers\etc\hosts`（需管理员权限）追加：
+  ```
+  10.57.180.105  dayu720di.zsy.bjat.qianxin-inc.cn
+  ```
+- **Linux/macOS**：`/etc/hosts` 追加同样一行。
+
+映射的 IP 用能连通该 broker 的地址（通常与 bootstrap 相同）。改完重新「测试连接」即可。
+程序在遇到该错误时会同时给出这条提示。
+
 ## Windows 构建与打包安装包
 
 GPUI 依赖 Windows + MSVC 与本机图形栈，**无法从 Linux 交叉编译**，需要在 Windows 机器

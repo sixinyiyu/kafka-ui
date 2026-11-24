@@ -6,7 +6,7 @@
 
 use std::time::Duration;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Result};
 use kafka_client::{Client, KerberosCredentials, SaslMechanismType, TlsConfig};
 use serde::{Deserialize, Serialize};
 
@@ -310,10 +310,30 @@ pub async fn build_client(cfg: &ClusterConfig) -> Result<Client> {
         }
     }
 
-    builder
-        .build()
-        .await
-        .with_context(|| format!("连接 Kafka 失败（{}）", cfg.bootstrap_servers))
+    match builder.build().await {
+        Ok(client) => Ok(client),
+        Err(e) => Err(anyhow!(
+            "连接 Kafka 失败（{}）：{}{}",
+            cfg.bootstrap_servers,
+            e,
+            broker_resolve_hint(&e.to_string())
+        )),
+    }
+}
+
+/// 当错误为 broker 地址解析失败（metadata 返回的 broker 主机名在本机解析不到）时，
+/// 追加可操作提示。典型场景：Windows/其他机器缺少该内网域名的 hosts 映射或 DNS。
+fn broker_resolve_hint(err: &str) -> &'static str {
+    if err.contains("Invalid broker address") || err.contains("No address resolved") {
+        "\n提示：Kafka 返回的 broker 主机名在本机无法解析（bootstrap 可连，但元数据里的 broker \
+         域名解析失败）。请在 hosts 文件添加映射，例如：\n  \
+         Windows: C:\\Windows\\System32\\drivers\\etc\\hosts 追加一行 \
+         `<broker_ip> <broker_hostname>`\n  \
+         Linux/macOS: /etc/hosts 追加同样一行\n\
+         具体 IP 可参考 bootstrap 地址或询问集群管理员。"
+    } else {
+        ""
+    }
 }
 
 /// 测试连接：连接成功后拉取集群拓扑。
