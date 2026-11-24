@@ -1,6 +1,6 @@
 # Kafka UI（GPUI 桌面版）
 
-基于 **Rust + [GPUI](https://github.com/zed-industries/zed)（Zed 的 GPU 加速 UI 框架）+ [kafka_client](https://crates.io/crates/kafka_client)** 的
+基于 **Rust + [GPUI](https://crates.io/crates/gpui)（Zed 的 GPU 加速 UI 框架）+ [kafka_client](https://crates.io/crates/kafka_client)** 的
 Kafka 图形化管理工具。纯 Rust、原生桌面窗口，无需浏览器。
 
 Kafka 客户端用法参考 [kafka-proxy](https://github.com/sixinyiyu/kafka-proxy)（`kafka_client` 的 `Client` / `AdminClient` / `Producer` / `Consumer`）。
