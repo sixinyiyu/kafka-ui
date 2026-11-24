@@ -41,10 +41,10 @@ on:
         required: false
         default: ''
       release:
-        description: '是否创建 GitHub Release 并上传安装包'
+        description: '是否创建 GitHub Release 并上传安装包（勾选即发布，普通 push 不发布）'
         type: boolean
         required: false
-        default: false
+        default: true
 
 # 允许创建 Release / 上传附件
 permissions:

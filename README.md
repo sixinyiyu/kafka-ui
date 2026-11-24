@@ -116,10 +116,13 @@ prepare（读取版本号）
 
 | 触发方式 | 操作 | 结果 |
 | --- | --- | --- |
-| **手动触发** | 仓库 → **Actions** → 左侧 **Windows CI** → **Run workflow** | 选择分支，可选填 `version`；勾选 `release` 则额外发布 Release |
-| **推送代码** | 推送到 `main` 且改动 `src/**`、`Cargo*`、`scripts/**`、`packaging/**` 等 | 自动跑 fmt/clippy/test/build，产物上传为 artifact |
-| **提交 PR** | 向 `main` 提 PR | 自动跑 fmt/clippy/test/build 做校验 |
+| **手动触发** | 仓库 → **Actions** → 左侧 **Windows CI** → **Run workflow** | 选择分支，可选填 `version`；`release` 默认**勾选**，即构建并发布 GitHub Release（不想发布取消勾选即可） |
+| **推送代码** | 推送到 `main` 且改动 `src/**`、`Cargo*`、`scripts/**`、`packaging/**` 等 | 跑 fmt/clippy/test/build，产物上传为 artifact（**不**发布 Release） |
+| **提交 PR** | 向 `main` 提 PR | 跑 fmt/clippy/test/build 做校验（不发布） |
 | **打 tag** | `git tag v0.1.0 && git push origin v0.1.0` | 自动构建并创建 GitHub Release，附带 `setup.exe` / `zip` |
+
+> 说明：`release` job 仅在「手动触发且勾选 release」或「推送 `v*` tag」时执行，其余情况显示 skipped（属正常）。
+> 不发布 Release 的普通 push 也能在 Actions 运行详情页底部 **Artifacts** 下载安装包。
 
 **获取构建产物：**
 - 普通触发：Actions 运行详情页底部 **Artifacts** 下载 `kafka-ui-windows-<版本>`（含 `kafka-ui.exe`、`zip`、`setup.exe`）；
