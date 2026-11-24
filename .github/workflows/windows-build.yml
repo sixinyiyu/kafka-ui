@@ -21,7 +21,6 @@ on:
       - 'tests/**'
       - 'Cargo.toml'
       - 'Cargo.portable.toml'
-      - 'Cargo.lock'
       - 'rust-toolchain.toml'
       - 'scripts/**'
       - 'packaging/**'
@@ -35,7 +34,6 @@ on:
       - 'tests/**'
       - 'Cargo.toml'
       - 'Cargo.portable.toml'
-      - 'Cargo.lock'
   workflow_dispatch:
     inputs:
       version:

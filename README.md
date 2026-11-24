@@ -126,22 +126,39 @@ cargo test --lib
 
 ### Cargo 清单说明（离线 / 内网）
 
-仓库包含三份清单，避免本机（离线 Linux）与 Windows / 联网环境冲突：
+仓库里的 `Cargo.toml` **默认使用上游 git 依赖**（`gpui = { git = "https://github.com/zed-industries/zed", tag = "v0.195.5" }`），
+Windows / 联网 Linux 可直接构建，**不含任何本地 `/tmp` 路径**。
+
+若在无法访问 GitHub 的内网机器上构建，使用「离线本地化」清单（把 gpui 指向本地源码 +
+`[patch]` 本地 blade/font-kit）：
 
 | 文件 | 用途 |
 | --- | --- |
-| `Cargo.portable.toml` | **可移植**：`gpui` 走上游 git，Windows / 联网 Linux 通用 |
-| `Cargo.offline.toml` | **离线本地化**：`gpui = file:///tmp/zed-src/...` + `[patch]` 本地 blade/font-kit |
-| `Cargo.toml` | 当前生效的清单（本仓库离线环境默认已指向本地化版本） |
+| `Cargo.toml` | **默认可移植**：`gpui` 走上游 git（提交到仓库的就是这份） |
+| `Cargo.portable.toml` | 可移植清单副本（与 `Cargo.toml` 相同，供脚本切换） |
+| `Cargo.offline.toml` | **离线本地化**：`gpui = file:///tmp/zed-src/...` + `[patch]` 本地 blade/font-kit（仅内网用，不提交生效） |
 
-切换：`scripts/use-offline.sh` / `scripts/use-portable.sh`（或直接 `cp`）。
-本机内网无法访问 GitHub，所以仓库里的 `Cargo.toml` 默认是离线本地化版。
+切换（内网机器）：
+```bash
+scripts/use-offline.sh     # 切到本地化依赖（cargo run 可离线构建）
+scripts/use-portable.sh    # 切回上游 git 依赖
+```
+
+> `Cargo.lock` 不纳入版本控制：离线（本地 vendored）与可移植（上游 git）两种 GPUI 源各自解析，
+> 提交单一锁文件会互相冲突且会泄露本地 `/tmp` 路径。
 
 ### GPUI 依赖说明
 
-GPUI 未发布到 crates.io，只能通过 git 依赖引入。它自身还依赖两个 GitHub 上的
+GPUI 未发布到 crates.io，只能通过 git 依赖引入；它自身还依赖两个 GitHub 上的
 小仓库（`kvark/blade` 负责 GPU 渲染、`zed-industries/font-kit` 负责字体）。
-本机当前网络无法稳定访问 GitHub，因此离线环境使用「本地化」写法（见上表）：
+仓库默认 `Cargo.toml` 使用标准写法（联网可构建）：
+
+```toml
+gpui = { git = "https://github.com/zed-industries/zed", tag = "v0.195.5" }
+```
+
+仅在**无法访问 GitHub 的内网机器**上，才用 `scripts/use-offline.sh` 切换到
+`Cargo.offline.toml` 的本地化写法：
 
 ```toml
 gpui = { git = "file:///tmp/zed-src/zed-0.195.5" }
@@ -149,12 +166,6 @@ gpui = { git = "file:///tmp/zed-src/zed-0.195.5" }
 # 把 gpui 的 git 依赖重定向到本地副本
 [patch."https://github.com/kvark/blade"]  ... path = "/tmp/blade/*"
 [patch."https://github.com/zed-industries/font-kit"]  font-kit = { path = "/tmp/font-kit" }
-```
-
-**联网环境下请改成标准写法**（删除上述 `[patch]` 段）：
-
-```toml
-gpui = { git = "https://github.com/zed-industries/zed", tag = "v0.195.5" }
 ```
 
 本地化步骤（内网/弱网构建时用）：

@@ -1,21 +1,12 @@
-# 离线 / 内网本机构建用的 Cargo 清单（只适用于已把 zed / blade / font-kit 本地化的 Linux 机器）。
-#
-# 用法（在离线 Linux 机器上）：
-#   cp Cargo.offline.toml Cargo.toml      # 切到本地化依赖
-#   cargo run --release
-# 切回可移植（Windows 友好）版本：
-#   cp Cargo.portable.toml Cargo.toml     # 见 scripts/use-portable.sh
-#
-# 说明：本机访问 GitHub 极慢，gpui 使用已本地化的 zed 0.195.5 源码，
-# 并把它的两个 git 子依赖（blade / font-kit）重定向到本地副本。
-
 [package]
 name = "kafka-ui"
 version = "0.1.0"
 edition = "2021"
 description = "Kafka UI — 基于 GPUI 的桌面版 Kafka 管理工具"
 license = "MIT"
+# 元数据：用于 Windows 安装包（cargo-wix / NSIS / 版本号）
 authors = ["kafka-ui"]
+repository = "https://example.com/kafka-ui"
 readme = "README.md"
 
 [[bin]]
@@ -23,6 +14,7 @@ name = "kafka-ui"
 path = "src/main.rs"
 
 [dependencies]
+# 异步运行时：GPUI 主线程外由后台线程驱动 tokio，Kafka 客户端全异步
 tokio = { version = "1", features = [
     "macros",
     "rt-multi-thread",
@@ -30,14 +22,22 @@ tokio = { version = "1", features = [
     "time",
     "fs",
 ] }
+
+# 纯 Rust Kafka 客户端（与 kafka-proxy 使用同一套 API）
 kafka_client = "0.8"
 bytes = "1"
+
+# 序列化 / 配置持久化
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_yaml = "0.9"
+
+# 日志
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing-appender = "0.2"
+
+# 通用工具
 anyhow = "1"
 thiserror = "2"
 chrono = { version = "0.4", features = ["serde"] }
@@ -46,19 +46,15 @@ dirs = "5"
 futures = "0.3"
 unicode-segmentation = "1"
 
-gpui = { git = "file:///tmp/zed-src/zed-0.195.5" }
-
-[patch."https://github.com/kvark/blade"]
-blade-graphics = { path = "/tmp/blade/blade-graphics" }
-blade-macros = { path = "/tmp/blade/blade-macros" }
-blade-util = { path = "/tmp/blade/blade-util" }
-
-[patch."https://github.com/zed-industries/font-kit"]
-font-kit = { path = "/tmp/font-kit" }
+# 桌面 GUI（GPUI）：使用上游 git 依赖，Windows / Linux 均可直接构建。
+# 说明：离线/内网 Linux 机器请改用本地化版本：把 `Cargo.offline.toml` 覆盖到本文件
+#        （或运行 `scripts/use-offline(Cargo).sh`），见 README。
+gpui = { git = "https://github.com/zed-industries/zed", tag = "v0.195.5" }
 
 [profile.release]
 opt-level = 2
 lto = "thin"
+strip = true
 
 [profile.dev]
 opt-level = 1
