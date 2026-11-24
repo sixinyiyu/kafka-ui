@@ -85,9 +85,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build-windows.ps1 -SkipInstal
 - `kafka-ui-<version>.zip`：免安装压缩包；
 - `kafka-ui-<version>-setup.exe`：NSIS 安装包（写开始菜单 / 桌面快捷方式 / 卸载项）。
 
-> 首次构建会从 GitHub 拉取 `gpui`（zed v0.195.5），需能访问 GitHub。
-> Windows 请使用**可移植清单**（上游 git 依赖）：`Cargo.toml` 默认即可，或执行
-> `scripts/use-portable.sh`（Git Bash）。
+> 首次构建会从 crates.io 拉取 `gpui = "0.2"` 及其依赖，需能访问 crates.io。
+> 仓库默认 `Cargo.toml` 即为 Windows 可用的可移植清单，直接构建即可。
 
 ### 方式二：GitHub Actions 流水线（推荐，无需本地 Windows）
 
@@ -101,7 +100,7 @@ prepare（读取版本号）
             └─ release：创建 GitHub Release 并上传安装包（仅特定触发）
 ```
 
-> CI 会自动把 `Cargo.portable.toml` 覆盖成 `Cargo.toml`，使用上游 git 依赖，避免离线路径问题。
+> CI 直接使用仓库默认的 `Cargo.toml`（`gpui = "0.2"`，crates.io），会自动从 crates.io 拉取依赖。
 
 **如何触发流水线：**
 
@@ -124,63 +123,34 @@ cargo clippy --all-targets --no-deps -- -D warnings
 cargo test --lib
 ```
 
-### Cargo 清单说明（离线 / 内网）
+### GPUI 依赖说明
 
-仓库里的 `Cargo.toml` **默认使用上游 git 依赖**（`gpui = { git = "https://github.com/zed-industries/zed", tag = "v0.195.5" }`），
-Windows / 联网 Linux 可直接构建，**不含任何本地 `/tmp` 路径**。
+GPUI 已发布到 crates.io（Zed 官方 GPU 加速 UI 框架）：<https://crates.io/crates/gpui>。
+本仓库直接使用正式版本：
 
-若在无法访问 GitHub 的内网机器上构建，使用「离线本地化」清单（把 gpui 指向本地源码 +
-`[patch]` 本地 blade/font-kit）：
+```toml
+gpui = "0.2"
+```
+
+> 默认特性已含 Linux 的 `wayland` / `x11` 与 Windows 的 `windows-manifest`，跨平台开箱即用。
+> 无需 git 依赖、无需 `[patch]`，`cargo build` 会自动从 crates.io 拉取。
+
+`Cargo.lock` 不纳入版本控制（保证不同环境可解析各自可用的依赖版本）。
+
+### 内网离线构建（可选）
+
+若目标机器**无法访问 crates.io / GitHub**，可改用本地 vendored 的 zed 源码清单
+`Cargo.offline.toml`（`gpui` 指向本地源码 + 本地 blade/font-kit）：
 
 | 文件 | 用途 |
 | --- | --- |
-| `Cargo.toml` | **默认可移植**：`gpui` 走上游 git（提交到仓库的就是这份） |
-| `Cargo.portable.toml` | 可移植清单副本（与 `Cargo.toml` 相同，供脚本切换） |
-| `Cargo.offline.toml` | **离线本地化**：`gpui = file:///tmp/zed-src/...` + `[patch]` 本地 blade/font-kit（仅内网用，不提交生效） |
-
-切换（内网机器）：
-```bash
-scripts/use-offline.sh     # 切到本地化依赖（cargo run 可离线构建）
-scripts/use-portable.sh    # 切回上游 git 依赖
-```
-
-> `Cargo.lock` 不纳入版本控制：离线（本地 vendored）与可移植（上游 git）两种 GPUI 源各自解析，
-> 提交单一锁文件会互相冲突且会泄露本地 `/tmp` 路径。
-
-### GPUI 依赖说明
-
-GPUI 未发布到 crates.io，只能通过 git 依赖引入；它自身还依赖两个 GitHub 上的
-小仓库（`kvark/blade` 负责 GPU 渲染、`zed-industries/font-kit` 负责字体）。
-仓库默认 `Cargo.toml` 使用标准写法（联网可构建）：
-
-```toml
-gpui = { git = "https://github.com/zed-industries/zed", tag = "v0.195.5" }
-```
-
-仅在**无法访问 GitHub 的内网机器**上，才用 `scripts/use-offline.sh` 切换到
-`Cargo.offline.toml` 的本地化写法：
-
-```toml
-gpui = { git = "file:///tmp/zed-src/zed-0.195.5" }
-
-# 把 gpui 的 git 依赖重定向到本地副本
-[patch."https://github.com/kvark/blade"]  ... path = "/tmp/blade/*"
-[patch."https://github.com/zed-industries/font-kit"]  font-kit = { path = "/tmp/font-kit" }
-```
-
-本地化步骤（内网/弱网构建时用）：
+| `Cargo.toml` | **默认**：`gpui = "0.2"`（crates.io 正式版，提交到仓库的就是这份） |
+| `Cargo.portable.toml` | 与 `Cargo.toml` 相同的副本，供脚本切换 |
+| `Cargo.offline.toml` | 内网离线：`gpui = file:///tmp/zed-src/...` + `[patch]` 本地 blade/font-kit |
 
 ```bash
-# 1) 下载并解压 zed 0.195.5 源码
-curl -L -o zed.tgz https://codeload.github.com/zed-industries/zed/tar.gz/refs/tags/v0.195.5
-mkdir -p /tmp/zed-src && tar xzf zed.tgz -C /tmp/zed-src
-(cd /tmp/zed-src/zed-0.195.5 && git init -q && git add -A && git commit -qm vendored)
-
-# 2) 下载 blade 与 font-kit（版本/rev 见 zed 根 Cargo.toml）
-curl -L https://codeload.github.com/kvark/blade/tar.gz/e0ec4e720957edd51b945b64dd85605ea54bcfe5 | \
-  (mkdir -p /tmp/blade && tar xz -C /tmp/blade --strip-components=1)
-curl -L https://codeload.github.com/zed-industries/font-kit/tar.gz/5474cfad4b719a72ec8ed2cb7327b2b01fd10568 | \
-  (mkdir -p /tmp/font-kit && tar xz -C /tmp/font-kit --strip-components=1)
+scripts/use-offline.sh     # 切到本地化依赖（内网离线构建）
+scripts/use-portable.sh    # 切回 crates.io 正式版
 ```
 
 ### 运行时依赖（Linux）

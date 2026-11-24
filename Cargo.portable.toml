@@ -46,10 +46,10 @@ dirs = "5"
 futures = "0.3"
 unicode-segmentation = "1"
 
-# 桌面 GUI（GPUI）：使用上游 git 依赖，Windows / Linux 均可直接构建。
-# 说明：离线/内网 Linux 机器请改用本地化版本：把 `Cargo.offline.toml` 覆盖到本文件
-#        （或运行 `scripts/use-offline(Cargo).sh`），见 README。
-gpui = { git = "https://github.com/zed-industries/zed", tag = "v0.195.5" }
+# 桌面 GUI（GPUI）：使用 crates.io 发布的正式版本（0.2.x）。
+# 默认特性已含 Linux 的 wayland/x11 与 Windows manifest，跨平台开箱即用。
+# crates.io: https://crates.io/crates/gpui  （Zed 官方 GPU 加速 UI 框架）
+gpui = "0.2"
 
 [profile.release]
 opt-level = 2

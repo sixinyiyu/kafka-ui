@@ -9,7 +9,7 @@
 #
 #  说明：GPUI 依赖 Windows + MSVC 与本机图形栈，无法从 Linux 交叉编译，
 #        因此在 windows-latest 上原生执行 fmt/clippy/test/build。
-#        Windows 构建使用「可移植清单」Cargo.portable.toml（上游 git 依赖）。
+#        依赖 gpui = "0.2"（crates.io 正式版），默认清单即可直接构建。
 # =============================================================================
 name: Windows CI
 
@@ -89,10 +89,6 @@ jobs:
         with:
           components: rustfmt, clippy
 
-      - name: Use portable manifest (upstream git deps)
-        shell: pwsh
-        run: Copy-Item Cargo.portable.toml Cargo.toml -Force
-
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
         with:
@@ -119,10 +115,6 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-pc-windows-msvc
-
-      - name: Use portable manifest (upstream git deps)
-        shell: pwsh
-        run: Copy-Item Cargo.portable.toml Cargo.toml -Force
 
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
