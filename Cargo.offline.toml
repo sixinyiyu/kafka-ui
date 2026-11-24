@@ -56,10 +56,6 @@ blade-util = { path = "/tmp/blade/blade-util" }
 [patch."https://github.com/zed-industries/font-kit"]
 font-kit = { path = "/tmp/font-kit" }
 
-# [kafka-ui patch] 修复 broker advertised host 空白导致解析失败
-[patch.crates-io]
-kafka_client = { path = "vendor/kafka_client" }
-
 [profile.release]
 opt-level = 2
 lto = "thin"

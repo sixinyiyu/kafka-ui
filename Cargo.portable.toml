@@ -51,11 +51,6 @@ unicode-segmentation = "1"
 # crates.io: https://crates.io/crates/gpui  （Zed 官方 GPU 加速 UI 框架）
 gpui = "0.2"
 
-# 本地打补丁的 kafka_client：修复 broker advertised host 带前后空白导致
-# `to_socket_addrs()` 解析失败（"Invalid broker address"）的问题。
-[patch.crates-io]
-kafka_client = { path = "vendor/kafka_client" }
-
 [profile.release]
 opt-level = 2
 lto = "thin"
