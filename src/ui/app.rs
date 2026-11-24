@@ -1330,8 +1330,7 @@ impl KafkaUi {
 
         // 右侧表单
         let form_card: AnyElement = if let Some(form) = &self.form {
-            let f = self.render_form(form, cx);
-            f
+            self.render_form(form, cx)
         } else {
             w::card(
                 div()
