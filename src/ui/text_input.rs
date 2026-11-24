@@ -396,8 +396,7 @@ impl EntityInputHandler for TextInput {
             .unwrap_or(self.selected_range.clone());
 
         self.content =
-            (self.content[0..range.start].to_owned() + new_text + &self.content[range.end..])
-                .into();
+            self.content[0..range.start].to_owned() + new_text + &self.content[range.end..];
         let cursor = range.start + new_text.len();
         self.selected_range = cursor..cursor;
         self.marked_range.take();
@@ -420,8 +419,7 @@ impl EntityInputHandler for TextInput {
             .unwrap_or(self.selected_range.clone());
 
         self.content =
-            (self.content[0..range.start].to_owned() + new_text + &self.content[range.end..])
-                .into();
+            self.content[0..range.start].to_owned() + new_text + &self.content[range.end..];
         if !new_text.is_empty() {
             self.marked_range = Some(range.start..range.start + new_text.len());
         } else {

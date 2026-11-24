@@ -98,10 +98,12 @@ mod tests {
     #[test]
     fn roundtrip_yaml() {
         let mut store = Store::default();
-        let mut cfg = ClusterConfig::default();
-        cfg.id = "abc".into();
-        cfg.name = "prod".into();
-        cfg.bootstrap_servers = "a:9092,b:9092".into();
+        let cfg = ClusterConfig {
+            id: "abc".into(),
+            name: "prod".into(),
+            bootstrap_servers: "a:9092,b:9092".into(),
+            ..ClusterConfig::default()
+        };
         assert!(store.upsert(cfg.clone()));
 
         let dir = std::env::temp_dir().join(format!("kafka-ui-test-{}", uuid::Uuid::new_v4()));
@@ -117,9 +119,11 @@ mod tests {
     #[test]
     fn upsert_updates_existing() {
         let mut store = Store::default();
-        let mut cfg = ClusterConfig::default();
-        cfg.id = "x".into();
-        cfg.name = "a".into();
+        let mut cfg = ClusterConfig {
+            id: "x".into(),
+            name: "a".into(),
+            ..ClusterConfig::default()
+        };
         store.upsert(cfg.clone());
         cfg.name = "b".into();
         assert!(!store.upsert(cfg));
@@ -130,9 +134,11 @@ mod tests {
     #[test]
     fn name_uniqueness() {
         let mut store = Store::default();
-        let mut cfg = ClusterConfig::default();
-        cfg.id = "1".into();
-        cfg.name = "dev".into();
+        let cfg = ClusterConfig {
+            id: "1".into(),
+            name: "dev".into(),
+            ..ClusterConfig::default()
+        };
         store.upsert(cfg);
         assert!(store.name_taken("dev", None));
         assert!(!store.name_taken("dev", Some("1")));

@@ -183,7 +183,7 @@ impl ClusterConfig {
     /// 解析 bootstrap 列表：支持逗号 / 分号 / 空白分隔。
     pub fn bootstrap_list(&self) -> Vec<String> {
         self.bootstrap_servers
-            .split(|c| c == ',' || c == ';' || c == '\n')
+            .split([',', ';', '\n'])
             .map(|s| s.trim().to_string())
             .filter(|s| !s.is_empty())
             .collect()
@@ -373,26 +373,32 @@ mod tests {
 
     #[test]
     fn parses_bootstrap_list() {
-        let mut cfg = ClusterConfig::default();
-        cfg.bootstrap_servers = "a:9092, b:9093 ;c:9094".into();
+        let cfg = ClusterConfig {
+            bootstrap_servers: "a:9092, b:9093 ;c:9094".into(),
+            ..ClusterConfig::default()
+        };
         assert_eq!(cfg.bootstrap_list(), vec!["a:9092", "b:9093", "c:9094"]);
     }
 
     #[test]
     fn validates_missing_port() {
-        let mut cfg = ClusterConfig::default();
-        cfg.name = "dev".into();
-        cfg.bootstrap_servers = "localhost".into();
+        let cfg = ClusterConfig {
+            name: "dev".into(),
+            bootstrap_servers: "localhost".into(),
+            ..ClusterConfig::default()
+        };
         assert!(cfg.validate().is_err());
     }
 
     #[test]
     fn sasl_requires_credentials() {
-        let mut cfg = ClusterConfig::default();
-        cfg.name = "dev".into();
-        cfg.security_protocol = SecurityProtocolKind::SaslPlaintext;
-        cfg.sasl_mechanism = SaslMechanismKind::Plain;
-        cfg.username = "".into();
+        let mut cfg = ClusterConfig {
+            name: "dev".into(),
+            security_protocol: SecurityProtocolKind::SaslPlaintext,
+            sasl_mechanism: SaslMechanismKind::Plain,
+            username: String::new(),
+            ..ClusterConfig::default()
+        };
         assert!(cfg.validate().is_err());
         cfg.username = "alice".into();
         assert!(cfg.validate().is_ok());

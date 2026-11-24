@@ -6,7 +6,7 @@ use kafka_client::{Client, Header, ProducerConfig, ProducerRecord};
 use serde::{Deserialize, Serialize};
 
 /// 发送参数。
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct SendSpec {
     pub topic: String,
     /// 消息 key（空表示不设置）。
@@ -17,18 +17,6 @@ pub struct SendSpec {
     pub partition: Option<i32>,
     /// 自定义 headers。
     pub headers: Vec<(String, String)>,
-}
-
-impl Default for SendSpec {
-    fn default() -> Self {
-        Self {
-            topic: String::new(),
-            key: String::new(),
-            value: String::new(),
-            partition: None,
-            headers: Vec::new(),
-        }
-    }
 }
 
 /// 发送结果。
